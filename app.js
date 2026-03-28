@@ -1,50 +1,34 @@
-const express = require("express");
-const mysql = require("mysql2/promise");
-
-const app = express();
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-
-const pool = mysql.createPool({
-  host: process.env.MYSQL_HOST,
-  port: Number(process.env.MYSQL_PORT || 3306),
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
-  waitForConnections: true,
-  connectionLimit: 10
-});
-
-app.get("/", (req, res) => {
-  res.send("ESP32 API is running");
-});
-
 app.post("/api/sensor", async (req, res) => {
   try {
     const { level, timestamp, device_id, device_name } = req.body;
 
-    if (level === undefined || timestamp === undefined) {
-      return res.status(400).send("Missing data");
+    if (level === undefined || timestamp === undefined || !device_id || !device_name) {
+      return res.status(400).json({
+        status: "error",
+        message: "Missing required fields"
+      });
     }
 
-    await pool.execute(
-      `INSERT INTO sensor_readings (water_level, timestamp_unix, created_at, device_id)
-       VALUES (?, ?, NOW(), ?)`,
+    await pool.query(
+      `INSERT INTO sensor_readings (level, timestamp_raw, device_id, device_name)
+       VALUES ($1, $2, $3, $4)`,
       [
         Number(level),
-        Number(timestamp),
-        device_id || "ESP32_SIM"
+        String(timestamp),
+        device_id,
+        device_name
       ]
     );
 
-    res.send("SUCCESS");
+    res.json({
+      status: "success",
+      message: "Data saved"
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).send("DB ERROR");
+    res.status(500).json({
+      status: "error",
+      message: "DB ERROR"
+    });
   }
-});
-
-const port = process.env.PORT || 10000;
-app.listen(port, "0.0.0.0", () => {
-  console.log(`Server running on port ${port}`);
 });
