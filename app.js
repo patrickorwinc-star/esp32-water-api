@@ -1,7 +1,12 @@
 const express = require("express");
 const { Pool } = require("pg");
+const cors = require("cors");
 
 const app = express();
+
+app.use(cors({
+  origin: "*"
+}));
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -87,7 +92,7 @@ app.get("/api/latest", async (req, res) => {
   }
 });
 
-// ✅ HISTORY (optional but useful)
+// ✅ HISTORY
 app.get("/api/history", async (req, res) => {
   try {
     const result = await pool.query(`
