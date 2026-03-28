@@ -1,13 +1,18 @@
 const express = require("express");
-const { Pool } = require("pg");
+const mysql = require("mysql2/promise");
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+const pool = mysql.createPool({
+  host: process.env.MYSQL_HOST,
+  port: Number(process.env.MYSQL_PORT || 3306),
+  user: process.env.MYSQL_USER,
+  password: process.env.MYSQL_PASSWORD,
+  database: process.env.MYSQL_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 10
 });
 
 app.get("/", (req, res) => {
@@ -22,14 +27,13 @@ app.post("/api/sensor", async (req, res) => {
       return res.status(400).send("Missing data");
     }
 
-    await pool.query(
-      `INSERT INTO sensor_readings (level, timestamp_raw, device_id, device_name)
-       VALUES ($1, $2, $3, $4)`,
+    await pool.execute(
+      `INSERT INTO sensor_readings (water_level, timestamp_unix, created_at, device_id)
+       VALUES (?, ?, NOW(), ?)`,
       [
         Number(level),
-        String(timestamp),
-        device_id || "ESP32_SIM",
-        device_name || "POSTS-ESP32-01"
+        Number(timestamp),
+        device_id || "ESP32_SIM"
       ]
     );
 
